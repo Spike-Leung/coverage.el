@@ -56,7 +56,7 @@
   (jc/shell-line "git rev-parse --show-toplevel"))
 
 (defun jc/real-filename (filename)
-  (jc/shell-line (concat "readlink -f " filename)))
+  (jc/shell-line (concat "stat -f N " filename)))
 
 (defun jc/line-pos-at-line (line)
   (interactive)
