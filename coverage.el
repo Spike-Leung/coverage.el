@@ -56,7 +56,7 @@
   (jc/shell-line "git rev-parse --show-toplevel"))
 
 (defun jc/real-filename (filename)
-  (jc/shell-line (concat "stat -f N " filename)))
+  (jc/shell-line (concat "stat -f " filename)))
 
 (defun jc/line-pos-at-line (line)
   (interactive)
@@ -103,14 +103,22 @@
                     (covered 0)
                     (not-covered 0))
                 (maphash (lambda (key value)
-                           (if (not (and jc/statements (= (gethash key jc/statements) value)))
+                           (if (and (= value 0) (not (and jc/statements (= (gethash key jc/statements) value))))
                                (let* ((statment (gethash key statments))
                                       (start (gethash "start" statment))
                                       (end (gethash "end" statment))
                                       (start-line-pos (jc/line-pos-at-line (gethash "line" start)))
-                                      (start-pos (+ start-line-pos (gethash "column" start)))
+                                      (start-pos (+ start-line-pos (progn
+                                                                     (let ((column (gethash "column" start)))
+                                                                       (if (numberp column)
+                                                                           column
+                                                                         0)))))
                                       (end-line-pos (jc/line-pos-at-line (gethash "line" start)))
-                                      (end-pos (+ end-line-pos (gethash "column" end)))
+                                      (end-pos (+ end-line-pos (progn
+                                                                 (let ((column (gethash "column" end)))
+                                                                   (if (numberp column)
+                                                                       column
+                                                                     0)))))
                                       (face (if (= value 0)
                                                 'jc/not-covered
                                               'jc/covered)))
