@@ -1,5 +1,7 @@
-;;; coverage.el - display code coverage (supports phpunit and JavaScript jest)
+;;; Package --- Summary
 ;;
+;;; coverage.el - display code coverage (supports phpunit and JavaScript jest)
+;;; Commentary:
 ;; Filename: coverage.el
 ;; Description: Display code coverage from jest javascript framework or phpunit
 ;; Author: (Jakub T. Jankiewicz) https://jcubic.pl/me
@@ -20,13 +22,12 @@
 ;;
 ;;    You should have received a copy of the GNU General Public License
 ;;    along with this program.  If not, see <http://www.gnu.org/licenses/>
-
-(require 'json)
-(require 'highlight)
-(require 'xml)
+;;; Code:
+(maybe-require-package 'json)
+(maybe-require-package 'highlight)
 
 (make-variable-buffer-local
-   (defvar jc/statements nil "variable that contain previous coverage"))
+ (defvar jc/statements nil "variable that contain previous coverage"))
 
 (define-minor-mode coverage-mode
   "Show code coverage from jest json file for git controled repo."
@@ -37,12 +38,12 @@
 
 
 (defface jc/covered
-    '((t :background "dark green"))
+  '((t :background "dark green"))
   "background color for covered lines"
   :group 'coverage-minor-mode)
 
 (defface jc/not-covered
-    '((t :background "dark red"))
+  '((t :background "dark red"))
   "background color for not covered lines"
   :group
   'coverage-minor-mode)
@@ -77,51 +78,10 @@
     (hlt-unhighlight-region 0 (point))))
 
 
-(defun jc/get-coverage (coverage-fname filename)
-  (let* ((xml (jc/parse-xml coverage-fname))
-         (coverage (assq 'coverage xml))
-         (pkg (cadr (xml-node-children coverage)))
-         (files (xml-node-children (cadr (xml-node-children pkg))))
-         (result))
-    (dolist (file files result)
-      (if (and (listp file) (string= filename (xml-get-attribute file 'name)))
-          (setq result file)))))
-
-(defun jc/mark-buffer-php ()
-  (interactive)
-  (let* ((dir (jc/root-git-repo))
-         (filename (jc/real-filename (buffer-file-name)))
-         (coverage-fname (concat dir "/build/logs/clover.xml"))
-         (coverage (jc/get-coverage coverage-fname filename)))
-    (save-excursion
-      (let ((covered 0)
-            (not-covered 0))
-        (dolist (line (xml-get-children coverage 'line))
-          (if (string= (xml-get-attribute line 'type) "stmt")
-              (let* ((num (string-to-number (xml-get-attribute line 'num)))
-                     (count (string-to-number (xml-get-attribute line 'count)))
-                     (start-pos (jc/line-pos-at-line num))
-                     (end-pos (jc/end-pos-at-line num))
-                     (face (if (= count 0)
-                               'jc/not-covered
-                             'jc/covered)))
-                (hlt-highlight-region start-pos end-pos face)
-                (if (= count 0)
-                    (setq not-covered (+ 1 not-covered))
-                  (setq covered (+ 1 covered))))))
-        (message "%3.2f%% coverage" (* (/ (float covered) (+ covered not-covered)) 100))))))
-
 (defun jc/mark-buffer ()
   (let ((ext (file-name-extension (buffer-file-name))))
-    (cond ((string= "php" ext) (jc/mark-buffer-php))
-          ((string= "js" ext) (jc/mark-buffer-jest))
+    (cond ((member ext '("js" "ts" "tsx")) (jc/mark-buffer-jest))
           (t (throw 'jest "invalid filename")))))
-
-(defun jc/parse-xml (fname)
-  (with-temp-buffer
-    (insert-file-contents fname)
-    (xml-parse-region (point-min) (point-max))))
-
 
 (defun jc/mark-buffer-jest ()
   (interactive)
@@ -133,8 +93,8 @@
     (if (not (file-exists-p coverage-fname))
         (message "file coverage not found")
       (let* ((json (json-read-file coverage-fname))
-            (filename (jc/real-filename (buffer-file-name (current-buffer))))
-            (coverage (gethash filename json)))
+             (filename (jc/real-filename (buffer-file-name (current-buffer))))
+             (coverage (gethash filename json)))
         (if (not (hash-table-p coverage))
             (message "No coverage found for this file")
           (let ((statments (gethash "statementMap" coverage)))
